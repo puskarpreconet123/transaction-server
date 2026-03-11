@@ -120,6 +120,5 @@ const checkPaymentStatus = async (provider_payment_id, api_key, api_secret, extr
 
 module.exports = {
     createPayment,
-    verifyWebhook,
     checkPaymentStatus,
 };
