@@ -12,11 +12,11 @@ exports.createPayment = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return errorResponse(res, 'Validation failed', 422, errors.array());
 
-    const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url } = req.body;
+    const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url, mid_id } = req.body;
 
     const result = await createPaymentOrder({
       merchant: req.merchant,
-      orderData: { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url },
+      orderData: { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url, mid_id },
     });
 
     const message = result.idempotent

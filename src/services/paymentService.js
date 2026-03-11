@@ -17,9 +17,7 @@ CREATE PAYMENT ORDER
 */
 
 const createPaymentOrder = async ({ merchant, orderData }) => {
-  console.log("inside paymentorder")
-
-  const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url } = orderData;
+  const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, mid_id } = orderData;
 
   /*
   ────────────────────────────────
@@ -52,7 +50,7 @@ const createPaymentOrder = async ({ merchant, orderData }) => {
   ────────────────────────────────
   */
 
-  const mid = await selectMid(merchant.mids);
+  const mid = await selectMid(merchant.mids, mid_id);
 
   /*
   ────────────────────────────────
