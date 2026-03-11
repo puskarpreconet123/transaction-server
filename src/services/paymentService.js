@@ -117,7 +117,9 @@ const createPaymentOrder = async ({ merchant, orderData }) => {
 
     webhook_url,
 
-    redirect_url: orderData.redirect_url
+    redirect_url: orderData.redirect_url,
+
+    expiry_time
 
   });
 
