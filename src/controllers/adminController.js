@@ -166,6 +166,7 @@ exports.updateMerchantStatus = async (req, res) => {
       'Merchant status updated'
     );
   } catch (err) {
+    console.log(err)
     return errorResponse(res, err.message);
   }
 };
@@ -215,16 +216,15 @@ exports.createMid = async (req, res) => {
       mid_code,
       provider,
       api_key,
-      api_secret,
-      webhook_secret,
       upi_id,
       merchant_name,
     } = req.body;
-
+    const {api_secret} = req.body.api_secret || "runs on api token(saved as api_key)"
+    const {webhook_secret} = req.body.webhook_secret || " "
     const exists = await MID.findOne({
       mid_code: mid_code.toUpperCase(),
     });
-
+    
     if (exists)
       return errorResponse(res, 'MID code already exists', 409);
 

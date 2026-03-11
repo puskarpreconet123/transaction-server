@@ -1,7 +1,9 @@
 const razorpayProvider = require('./razorpayProvider');
+const rupeeFlowProvider = require('./rupeeFlowProvider');
 
 const PROVIDERS = {
   razorpay: razorpayProvider,
+  rupeeflow: rupeeFlowProvider,
   dummy: razorpayProvider, // dummy uses same simulation
 };
 

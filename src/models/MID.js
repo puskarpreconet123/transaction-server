@@ -12,7 +12,7 @@ const midSchema = new mongoose.Schema(
     provider: {
       type: String,
       required: [true, 'Provider name is required'],
-      enum: ['razorpay', 'paytm', 'phonepe', 'dummy'],
+      enum: ['razorpay', 'paytm', 'phonepe', 'rupeeflow', 'dummy'],
       default: 'dummy',
     },
     api_key: {
@@ -22,12 +22,10 @@ const midSchema = new mongoose.Schema(
     },
     api_secret: {
       type: String,
-      required: [true, 'Provider API secret is required'],
       select: false,
     },
     webhook_secret: {
       type: String,
-      required: [true, 'Webhook secret is required'],
       select: false,
     },
     upi_id: {

@@ -92,6 +92,14 @@ const paymentSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    webhook_url: {
+      type: String,
+      trim: true,
+    },
+    redirect_url: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

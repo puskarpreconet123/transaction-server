@@ -55,6 +55,10 @@ const merchantRoutes = require('./routes/merchantRoutes');
 // Payment routes (CORE FUNCTION)
 const paymentRoutes = require('./routes/paymentRoutes');
 
+//Rupeflow Callback routes(recive status from rupeeflow about payment)
+
+const callBackRoutes = require("./routes/callbackRoutes")
+
 // RupeeFlow webhook routes
 // const webhookRoutes = require('./routes/webhookRoutes');
 
@@ -65,6 +69,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 app.use('/api/admin', adminRoutes);
 app.use('/api/merchant', merchantRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/rupeeflow', callBackRoutes)
 // app.use('/api/add-money', enquiryRoutes);
 // app.use('/webhooks', webhookRoutes);
 

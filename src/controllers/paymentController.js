@@ -12,11 +12,11 @@ exports.createPayment = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return errorResponse(res, 'Validation failed', 422, errors.array());
 
-    const { amount, order_id, customer_name, customer_email, customer_mobile } = req.body;
+    const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url } = req.body;
 
     const result = await createPaymentOrder({
       merchant: req.merchant,
-      orderData: { amount, order_id, customer_name, customer_email, customer_mobile },
+      orderData: { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url, redirect_url },
     });
 
     const message = result.idempotent
@@ -25,21 +25,19 @@ exports.createPayment = async (req, res) => {
 
     return successResponse(res, result, message, result.idempotent ? 200 : 201);
   } catch (err) {
-    console.error('Payment creation error:', err.message);
+    console.error('Payment creation error:', err);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
  * GET /api/payments/:payment_id
- * Get payment status
+ * Get payment status with proactive sync
  */
 exports.getPaymentStatus = async (req, res) => {
   try {
-    const payment = await Payment.findOne({
-      payment_id: req.params.payment_id,
-      merchant_id: req.merchant._id,
-    }).select('payment_id order_id amount status upi_link qr_string expiry_time utr createdAt');
+    const { getPaymentStatusWithSync } = require('../services/paymentService');
+    const payment = await getPaymentStatusWithSync(req.params.payment_id, req.merchant._id);
 
     if (!payment) return errorResponse(res, 'Payment not found', 404);
 

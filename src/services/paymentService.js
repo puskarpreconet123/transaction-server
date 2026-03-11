@@ -4,70 +4,11 @@ const { generatePaymentId } = require('../utils/generatePaymentId');
 const { selectMid } = require('./midService');
 const axios = require('axios');
 
-// const { getProvider } = require('../providers'); // FUTURE MULTI PROVIDER
+const { getProvider } = require('../providers');
 
 const EXPIRY_MINUTES = parseInt(process.env.PAYMENT_EXPIRY_MINUTES || '5');
 
 
-/*
-────────────────────────────────
-CALL RUPEEFLOW API
-────────────────────────────────
-*/
-
-const callRupeeFlow = async ({
-  amount,
-  payment_id,
-  customer_name,
-  customer_email,
-  customer_mobile
-}) => {
-
-  const response = await axios.post(
-    "https://banking.rupeeflow.co/api/add-money/v6/createOrder",
-    {
-      api_token: process.env.RUPEEFLOW_API_TOKEN,
-
-      amount: amount,
-
-      callback_url: process.env.RUPEEFLOW_CALLBACK_URL,
-
-      client_id: payment_id,
-
-      customer_name: customer_name,
-
-      customer_mobile: customer_mobile,
-
-      customer_email: customer_email,
-
-      payeeVPA: process.env.RUPEEFLOW_VPA
-    },
-    {
-      headers: {
-        "Content-Type": "application/json"
-      },
-      timeout: 8000
-    }
-  );
-
-  const data = response.data;
-
-  if (data.status !== "success") {
-    throw new Error(data.message || "RupeeFlow API error");
-  }
-
-  return {
-
-    provider_payment_id: data.data?.order_id,
-
-    qr_string: data.data?.qrString,
-
-    upi_link: data.data?.qrString,
-
-    raw_response: data
-
-  };
-};
 
 /*
 ────────────────────────────────
@@ -76,8 +17,9 @@ CREATE PAYMENT ORDER
 */
 
 const createPaymentOrder = async ({ merchant, orderData }) => {
+  console.log("inside paymentorder")
 
-  const { amount, order_id, customer_name, customer_email, customer_mobile } = orderData;
+  const { amount, order_id, customer_name, customer_email, customer_mobile, webhook_url } = orderData;
 
   /*
   ────────────────────────────────
@@ -88,7 +30,7 @@ const createPaymentOrder = async ({ merchant, orderData }) => {
   const existing = await Payment.findOne({
     merchant_id: merchant._id,
     order_id,
-    status: { $in: ['CREATED','PENDING','SUCCESS'] }
+    status: { $in: ['CREATED', 'PENDING', 'SUCCESS'] }
   }).lean();
 
   if (existing) {
@@ -122,16 +64,23 @@ const createPaymentOrder = async ({ merchant, orderData }) => {
 
   /*
   ────────────────────────────────
-  CALL RUPEEFLOW
+  CALL PROVIDER
   ────────────────────────────────
   */
 
-  const providerResponse = await callRupeeFlow({
+  const provider = getProvider(mid.provider);
+
+  const providerResponse = await provider.createPayment({
     amount,
     payment_id,
     customer_name,
     customer_email,
     customer_mobile,
+    api_key: mid.api_key,
+    api_secret: mid.api_secret,
+    webhook_secret: mid.webhook_secret,
+    upi_id: mid.upi_id,
+    merchant_name: mid.merchant_name,
   });
 
   const expiry_time = new Date(
@@ -166,7 +115,9 @@ const createPaymentOrder = async ({ merchant, orderData }) => {
 
     provider_response: providerResponse.raw_response,
 
-    expiry_time
+    webhook_url,
+
+    redirect_url: orderData.redirect_url
 
   });
 
@@ -282,7 +233,7 @@ const expireStalePayments = async () => {
 
   const stale = await Payment.find({
 
-    status: { $in: ['CREATED','PENDING'] },
+    status: { $in: ['CREATED', 'PENDING'] },
 
     expiry_time: { $lt: now }
 
@@ -300,12 +251,58 @@ const expireStalePayments = async () => {
 
 };
 
+/**
+ * Get payment status with proactive provider sync
+ * Useful for frontend polling to ensure real-time updates
+ */
+const getPaymentStatusWithSync = async (payment_id, merchant_id) => {
+  const payment = await Payment.findOne({ payment_id, merchant_id })
+    .populate('mid_id', '+api_key +api_secret +webhook_secret');
+
+  if (!payment) return null;
+
+  // Proactively check status if not terminal
+  if (['CREATED', 'PENDING'].includes(payment.status)) {
+    try {
+      const mid = payment.mid_id;
+      const provider = getProvider(mid.provider);
+
+      if (provider.checkPaymentStatus) {
+        const result = await provider.checkPaymentStatus(
+          payment.provider_payment_id,
+          mid.api_key,
+          mid.api_secret,
+          { payment_id: payment.payment_id, createdAt: payment.createdAt }
+        );
+
+        if (result.status !== payment.status && result.status !== 'PENDING') {
+          await updatePaymentStatus(payment, result.status, {
+            utr: result.utr,
+            provider_response: result.raw_response
+          });
+
+          // Trigger webhook if status changed to SUCCESS or FAILED
+          if (['SUCCESS', 'FAILED'].includes(result.status)) {
+            const { sendWebhook } = require('./webhookService');
+            setImmediate(() => sendWebhook(payment, 1));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Proactive status sync failed:', err.message);
+    }
+  }
+
+  return payment;
+};
+
 module.exports = {
 
   createPaymentOrder,
 
   updatePaymentStatus,
 
-  expireStalePayments
+  expireStalePayments,
+  getPaymentStatusWithSync
 
 };

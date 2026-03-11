@@ -26,23 +26,25 @@ const buildPayload = (payment) => ({
  */
 const sendWebhook = async (payment, attemptNumber = 1) => {
   const merchant = await Merchant.findById(payment.merchant_id);
-  if (!merchant || !merchant.webhook_url) {
-    console.warn(`⚠️  No webhook URL for merchant ${payment.merchant_id}`);
+  const webhookUrl = payment.webhook_url || merchant?.webhook_url;
+
+  if (!webhookUrl) {
+    console.warn(`⚠️  No webhook URL for payment ${payment.payment_id}`);
     return;
   }
 
   const payload = buildPayload(payment);
   const webhookLog = await WebhookLog.create({
     payment_id: payment.payment_id,
-    merchant_id: merchant._id,
-    webhook_url: merchant.webhook_url,
+    merchant_id: payment.merchant_id,
+    webhook_url: webhookUrl,
     payload,
     attempt_number: attemptNumber,
     status: 'pending',
   });
 
   try {
-    const response = await axios.post(merchant.webhook_url, payload, {
+    const response = await axios.post(webhookUrl, payload, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',

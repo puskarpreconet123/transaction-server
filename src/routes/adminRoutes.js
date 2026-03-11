@@ -47,7 +47,7 @@ router.post('/mids', [
     .isIn(['rupeeflow', 'razorpay', 'paytm', 'phonepe', 'dummy'])
     .withMessage('Invalid provider'),
   body('api_key').notEmpty().withMessage('API key is required'),
-  body('api_secret').notEmpty().withMessage('API secret is required'),
+  body('api_secret').optional(),
   body('webhook_secret').optional(),
 ], validate, adminController.createMid);
 

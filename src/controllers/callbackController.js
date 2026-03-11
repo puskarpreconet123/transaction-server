@@ -28,20 +28,9 @@ exports.rupeeFlowCallback = async (req, res) => {
 
     await updatePaymentStatus(payment, newStatus, { utr, provider_response: req.body });
 
-    // Call merchant webhook (if provided)
-    if (payment.callbackUrl) {
-      try {
-        await axios.post(payment.callbackUrl, {
-          order_id: payment.order_id,
-          payment_id: payment.payment_id,
-          amount: payment.amount,
-          status: newStatus,
-          utr: utr
-        });
-      } catch (err) {
-        console.error('Merchant webhook failed', err.message);
-      }
-    }
+    // Use centralized webhook service for merchant notification
+    const { sendWebhook } = require('../services/webhookService');
+    setImmediate(() => sendWebhook(payment, 1));
 
     res.json({ status: 'success', message: 'Callback processed' });
 
